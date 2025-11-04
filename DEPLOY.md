@@ -18,11 +18,14 @@
 1. **Ve al servicio en Render Dashboard**
 2. **Settings → Environment**
 3. **Python Version**: Selecciona manualmente **Python 3.11** del dropdown ⚠️ **CRÍTICO**
+   - Si no ves Python 3.11, usa Python 3.12 (más compatible que 3.13)
 4. **Root Directory**: `backend`
 5. **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 6. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
-**Nota**: El `runtime.txt` en `backend/runtime.txt` también especifica Python 3.11, pero Render puede ignorarlo si no está configurado manualmente en el dashboard.
+**Nota**: 
+- El `runtime.txt` en `backend/runtime.txt` también especifica Python 3.11, pero Render puede ignorarlo si no está configurado manualmente en el dashboard.
+- Si Render sigue usando Python 3.13, las dependencias están actualizadas para soportar Python 3.13, pero **se recomienda fuertemente usar Python 3.11**.
 
 #### Variables de entorno en Render:
 ```
