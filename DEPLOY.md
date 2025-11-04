@@ -11,15 +11,21 @@
 
 ### 2. Configuración en Render
 
+#### ⚠️ IMPORTANTE: Configuración Manual en el Dashboard
+
+Render puede no detectar automáticamente el `render.yaml`. Configura manualmente:
+
 #### Configuración del servicio:
 - **Name**: `smartgate-backend`
 - **Environment**: `Python 3`
-- **Python Version**: `3.11` (importante para compatibilidad)
+- **Python Version**: `3.11` ⚠️ **CRÍTICO**: Selecciona manualmente Python 3.11 en el dropdown
 - **Region**: `Oregon` (o la más cercana)
 - **Branch**: `main` (o tu rama principal)
-- **Root Directory**: `backend`
+- **Root Directory**: `backend` ⚠️ **IMPORTANTE**: Debe ser `backend`
 - **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+**Nota**: Si el Root Directory es `backend`, el `runtime.txt` debe estar en `backend/runtime.txt` (ya está así).
 
 #### Variables de entorno en Render:
 ```
