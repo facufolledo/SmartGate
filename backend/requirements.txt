@@ -4,11 +4,12 @@ uvicorn[standard]==0.24.0
 websockets==12.0
 
 # Base de datos
-mysql-connector-python==8.2.0
+psycopg2-binary==2.9.9
 
 # Autenticación
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 python-multipart==0.0.6
 
 # Procesamiento de imágenes y visión por computadora

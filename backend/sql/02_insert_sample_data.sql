@@ -3,8 +3,7 @@
 -- ==========================================
 -- Script para insertar datos de ejemplo
 -- Ejecutar después de 01_create_tables.sql
-
-USE smartgate;
+-- Nota: En PostgreSQL, asegúrate de estar conectado a la base de datos correcta
 
 -- ==========================================
 -- DATOS DE PRUEBA: DEPARTAMENTOS
@@ -56,11 +55,11 @@ INSERT INTO vehiculos (matricula, marca, modelo, color, id_propietario, estado) 
 -- DATOS DE PRUEBA: REGISTROS DE ACCESO
 -- ==========================================
 INSERT INTO registros_acceso (matricula, acceso_concedido, confianza, timestamp_deteccion, observaciones) VALUES
-('AB 123 CD', TRUE, 0.95, DATE_SUB(NOW(), INTERVAL 2 HOUR), 'Acceso automático - Detección exitosa'),
-('EF 456 GH', TRUE, 0.87, DATE_SUB(NOW(), INTERVAL 1 HOUR), 'Acceso automático - Detección exitosa'),
-('UV 678 WX', FALSE, 0.92, DATE_SUB(NOW(), INTERVAL 30 MINUTE), 'Acceso denegado - Estado inactivo'),
-('IJ 789 KL', TRUE, 0.78, DATE_SUB(NOW(), INTERVAL 15 MINUTE), 'Acceso automático - Detección exitosa'),
-('YZ 901 AB', FALSE, 0.89, DATE_SUB(NOW(), INTERVAL 5 MINUTE), 'Acceso denegado - Estado inactivo');
+('AB 123 CD', TRUE, 0.95, NOW() - INTERVAL '2 hours', 'Acceso automático - Detección exitosa'),
+('EF 456 GH', TRUE, 0.87, NOW() - INTERVAL '1 hour', 'Acceso automático - Detección exitosa'),
+('UV 678 WX', FALSE, 0.92, NOW() - INTERVAL '30 minutes', 'Acceso denegado - Estado inactivo'),
+('IJ 789 KL', TRUE, 0.78, NOW() - INTERVAL '15 minutes', 'Acceso automático - Detección exitosa'),
+('YZ 901 AB', FALSE, 0.89, NOW() - INTERVAL '5 minutes', 'Acceso denegado - Estado inactivo');
 
 -- ==========================================
 -- VERIFICACIÓN DE DATOS INSERTADOS

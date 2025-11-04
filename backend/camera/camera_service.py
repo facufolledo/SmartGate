@@ -4,11 +4,15 @@ import threading
 import time
 import asyncio
 from datetime import datetime
-import mysql.connector
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from typing import Optional, Callable
 import json
 import os
 from .detector import ANPRDetector
+
+# Schema de la base de datos (public es el default en PostgreSQL)
+DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
 
 # Silenciar logs verbosos de OpenCV
 try:
@@ -158,12 +162,15 @@ class CameraService:
         """Busca datos mínimos del vehículo por matrícula en `vehiculos`.
         Acceso basado en `vehiculos.estado` (0 permitido, 1 denegado)."""
         try:
-            conn = mysql.connector.connect(**self.db_config)
-            cursor = conn.cursor(dictionary=True)
+            # Usar la función de conexión de db.py
+            from db import get_connection
+            conn = get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-            cursor.execute("""
+            from db import table_name
+            cursor.execute(f"""
                 SELECT *
-                FROM vehiculos
+                FROM {table_name('vehiculos')}
                 WHERE matricula = %s
                 LIMIT 1
             """, (plate,))
@@ -171,6 +178,9 @@ class CameraService:
             result = cursor.fetchone()
             cursor.close()
             conn.close()
+            
+            if result:
+                result = dict(result)
 
             if not result:
                 return None

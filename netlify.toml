@@ -1,0 +1,15 @@
+# Configuración para Netlify
+[build]
+  base = "frontend"
+  command = "npm install && npm run build"
+  publish = "build"
+
+# Redirecciones para SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Variables de entorno (se configuran en el dashboard de Netlify)
+# REACT_APP_API_BASE=https://tu-backend.onrender.com
+

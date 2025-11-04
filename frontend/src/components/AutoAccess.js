@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import API_BASE_URL from '../config/api';
 
 const AutoAccess = () => {
   const [isDetecting, setIsDetecting] = useState(false);
@@ -12,7 +13,7 @@ const AutoAccess = () => {
   });
   
   const wsRef = useRef(null);
-  const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+  const apiBase = API_BASE_URL;
   const alertTimeoutRef = useRef(null);
 
   // Conectar WebSocket al montar el componente

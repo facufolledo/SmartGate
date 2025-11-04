@@ -3,8 +3,7 @@
 -- ==========================================
 -- Script para crear usuarios iniciales del sistema
 -- Ejecutar después de 01_create_tables.sql
-
-USE smartgate;
+-- Nota: En PostgreSQL, asegúrate de estar conectado a la base de datos correcta
 
 -- ==========================================
 -- CREAR USUARIOS POR DEFECTO
@@ -13,12 +12,14 @@ USE smartgate;
 -- Usuario administrador
 -- Password: admin123 (hash generado con bcrypt)
 INSERT INTO usuarios (username, password_hash, nombre, rol, activo, primer_login) VALUES
-('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8Kz8Kz2', 'Administrador del Sistema', 'admin', TRUE, TRUE);
+('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8Kz8Kz2', 'Administrador del Sistema', 'admin', TRUE, TRUE)
+ON CONFLICT (username) DO NOTHING;
 
 -- Usuario operador
 -- Password: ope123 (hash generado con bcrypt)
 INSERT INTO usuarios (username, password_hash, nombre, rol, activo, primer_login) VALUES
-('ope', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8Kz8Kz2', 'Operador del Sistema', 'ope', TRUE, TRUE);
+('ope', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8Kz8Kz2', 'Operador del Sistema', 'ope', TRUE, TRUE)
+ON CONFLICT (username) DO NOTHING;
 
 -- ==========================================
 -- VERIFICACIÓN DE USUARIOS CREADOS

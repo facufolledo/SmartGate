@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 const VehicleAccess = () => {
   const [matricula, setMatricula] = useState('');
@@ -18,8 +19,8 @@ const VehicleAccess = () => {
 
     try {
       const endpoint = accessType === 'general'
-        ? 'http://localhost:8000/general/verificar-acceso'
-        : 'http://localhost:8000/cocheras/verificar-acceso';
+        ? `${API_BASE_URL}/general/verificar-acceso`
+        : `${API_BASE_URL}/cocheras/verificar-acceso`;
 
       const response = await axios.post(endpoint, { matricula: matricula.toUpperCase() });
       setResult(response.data);
