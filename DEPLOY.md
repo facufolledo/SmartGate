@@ -14,10 +14,11 @@
 #### Configuración del servicio:
 - **Name**: `smartgate-backend`
 - **Environment**: `Python 3`
+- **Python Version**: `3.11` (importante para compatibilidad)
 - **Region**: `Oregon` (o la más cercana)
 - **Branch**: `main` (o tu rama principal)
 - **Root Directory**: `backend`
-- **Build Command**: `pip install -r requirements.txt`
+- **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 #### Variables de entorno en Render:

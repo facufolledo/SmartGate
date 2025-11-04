@@ -1,13 +1,11 @@
-# Archivo para Render (alternativa al dashboard)
-# Render puede usar este archivo o puedes configurar todo desde el dashboard
-
 services:
   - type: web
     name: smartgate-backend
     env: python
+    pythonVersion: 3.11
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
@@ -26,4 +24,3 @@ services:
         value: 0
       - key: MODELS_DIR
         value: models
-
