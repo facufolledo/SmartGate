@@ -11,21 +11,25 @@
 
 ### 2. Configuración en Render
 
-#### ⚠️ IMPORTANTE: Configuración Manual en el Dashboard
+#### ⚠️ ⚠️ ⚠️ CRÍTICO: CAMBIAR PYTHON A 3.11 ⚠️ ⚠️ ⚠️
 
-**Render puede no detectar automáticamente el `render.yaml`**. Debes configurar manualmente en el dashboard:
+**Render está usando Python 3.13 por defecto, lo cual causa errores de compatibilidad.**
+
+**PASOS OBLIGATORIOS:**
 
 1. **Ve al servicio en Render Dashboard**
 2. **Settings → Environment**
-3. **Python Version**: Selecciona manualmente **Python 3.11** del dropdown ⚠️ **CRÍTICO**
-   - Si no ves Python 3.11, usa Python 3.12 (más compatible que 3.13)
+3. **Python Version**: **DEBES cambiar manualmente a Python 3.11** ⚠️ **OBLIGATORIO**
+   - Python 3.13 NO funciona con las dependencias actuales
+   - Causa errores: `psycopg2`, `opencv-python`, `numpy`
+   - **Si no cambias a Python 3.11, el despliegue SIEMPRE fallará**
 4. **Root Directory**: `backend`
 5. **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 6. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 **Nota**: 
-- El `runtime.txt` en `backend/runtime.txt` también especifica Python 3.11, pero Render puede ignorarlo si no está configurado manualmente en el dashboard.
-- Si Render sigue usando Python 3.13, las dependencias están actualizadas para soportar Python 3.13, pero **se recomienda fuertemente usar Python 3.11**.
+- El `runtime.txt` en `backend/runtime.txt` especifica Python 3.11, pero Render lo ignora si no está configurado manualmente.
+- **NO hay solución alternativa**: DEBES cambiar a Python 3.11 en el dashboard.
 
 #### Variables de entorno en Render:
 ```

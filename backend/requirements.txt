@@ -4,7 +4,7 @@ uvicorn[standard]==0.24.0
 websockets==12.0
 
 # Base de datos
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.9
 
 # Autenticación
 python-jose[cryptography]==3.3.0
@@ -13,7 +13,7 @@ bcrypt==4.0.1
 python-multipart==0.0.6
 
 # Procesamiento de imágenes y visión por computadora
-opencv-python==4.8.1.78
+opencv-python>=4.10.0
 ultralytics==8.0.196
 easyocr==1.7.0
 numpy>=1.26.0
