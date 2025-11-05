@@ -82,10 +82,42 @@ const AutoAccess = () => {
     alertTimeoutRef.current = setTimeout(() => setShowAlert(false), 8000);
   };
 
-  const closeAlert = () => {
-    setShowAlert(false);
-    if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
-  };
+  {showAlert && currentDetection && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className={`max-w-2xl w-full mx-4 p-6 rounded-2xl border-4 shadow-2xl ${
+        currentDetection.acceso 
+          ? 'bg-green-50 border-green-300' 
+          : 'bg-red-50 border-red-300'
+      }`}>
+        <div className="text-center mb-6">
+          <h3 className="text-3xl font-bold mb-2">🚨 DETECCIÓN AUTOMÁTICA</h3>
+          <p className="text-gray-600">Patente detectada automáticamente</p>
+        </div>
+  
+        <div className="text-center mb-6">
+          <span className="text-6xl font-mono font-bold">{currentDetection.matricula}</span>
+        </div>
+  
+        <div className="text-center mb-6">
+          <span className={`text-3xl font-bold px-6 py-3 rounded-full ${
+            currentDetection.acceso ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          }`}>
+            {currentDetection.acceso ? '✅ Acceso concedido' : '❌ Acceso denegado'}
+          </span>
+        </div>
+  
+        <div className="text-center">
+          <button
+            onClick={closeAlert}
+            className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+  
 
   return (
     <div className="space-y-8">
