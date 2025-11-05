@@ -39,8 +39,18 @@ def init_camera():
 
 @router.on_event("startup")
 async def startup_event():
-    """Inicializa la cámara al arrancar el servidor"""
+    """
+    Inicializa la cámara solo si ENABLE_CAMERA está activa.
+    Evita que Render falle al no tener cámara ni modelo local.
+    """
+    if os.getenv("ENABLE_CAMERA", "0").lower() not in ("1", "true", "yes", "on"):
+        print("🔌 ENABLE_CAMERA=0 → Cámara deshabilitada en este entorno.")
+        return
+    
+    print("🎥 ENABLE_CAMERA=1 → Inicializando cámara...")
     init_camera()
+
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -174,11 +184,15 @@ async def auto_access_ui():
 
 @router.post("/start")
 async def start_camera():
-    """Inicia la cámara"""
+    """Inicia la cámara (la inicializa si aún no existe)"""
+    global camera_service
+    if camera_service is None:
+        init_camera()
     if camera_service:
         camera_service.start_background_capture()
         return {"message": "Cámara iniciada"}
-    return {"error": "Servicio de cámara no inicializado"}
+    return {"error": "No se pudo inicializar el servicio de cámara"}
+
 
 @router.post("/stop")
 async def stop_camera():
