@@ -5,44 +5,36 @@ const AutoAccess = () => {
   const [currentDetection, setCurrentDetection] = useState(null);
   const [detectionHistory, setDetectionHistory] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
-  const [stats, setStats] = useState({ total: 0, permitidos: 0, denegados: 0 });
-
-  // Cámara local (navegador del usuario)
-  const [camReady, setCamReady] = useState(false);
-  const [camMsg, setCamMsg] = useState("");
+  const [stats, setStats] = useState({
+    total: 0,
+    permitidos: 0,
+    denegados: 0
+  });
 
   const wsRef = useRef(null);
   const alertTimeoutRef = useRef(null);
 
-  // ---- WebSocket (Render) ----
+  // ✅ Conectar al WebSocket (Render)
   const connectWebSocket = useCallback(() => {
     const ws = new WebSocket("wss://smartgate-ey9z.onrender.com/auto-access/ws");
 
-    let pingTimer = null;
     ws.onopen = () => {
+      console.log("🔗 WebSocket conectado");
       setIsDetecting(true);
-      try { ws.send('hello'); } catch {}
-      pingTimer = setInterval(() => { try { ws.send('ping'); } catch {} }, 10000);
     };
 
     ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'detection') {
-          handleDetection(message.data);
-        }
-      } catch {}
+      const msg = JSON.parse(event.data);
+      if (msg.type === "detection") handleDetection(msg.data);
     };
 
     ws.onclose = () => {
+      console.log("⚠️ WS cerrado — reconectando...");
       setIsDetecting(false);
-      if (pingTimer) clearInterval(pingTimer);
-      setTimeout(connectWebSocket, 5000);
+      setTimeout(connectWebSocket, 4000);
     };
 
-    ws.onerror = () => {
-      // solo dejamos que reconecte
-    };
+    ws.onerror = (err) => console.log("❌ WS Error:", err);
 
     wsRef.current = ws;
   }, []);
@@ -52,192 +44,86 @@ const AutoAccess = () => {
     return () => wsRef.current && wsRef.current.close();
   }, [connectWebSocket]);
 
-  // ---- Cámara local (se activa con botón) ----
-  const startCamera = async () => {
-    setCamMsg("");
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setCamMsg("Este navegador no soporta acceso a cámara.");
-        return;
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const video = document.getElementById("localCamera");
-      if (video) {
-        video.srcObject = stream;
-        video.muted = true;
-        await video.play().catch(() => {});
-      }
-      setCamReady(true);
-      setCamMsg("Cámara activa ✅");
-    } catch (err) {
-      if (err?.name === "NotAllowedError") {
-        setCamMsg("Permiso de cámara denegado. Habilitalo en el candado 🔒 de la barra de direcciones.");
-      } else if (err?.name === "NotFoundError") {
-        setCamMsg("No se encontró una cámara disponible.");
-      } else if (err?.name === "NotReadableError") {
-        setCamMsg("La cámara está en uso por otra app (Zoom/Meet/OBS). Cerrala y reintenta.");
-      } else {
-        setCamMsg("No se pudo acceder a la cámara. Revisá permisos del navegador/SO.");
-      }
-    }
-  };
 
-  // ---- Detecciones ----
-  const handleDetection = (vehicleData) => {
-    const newDetection = {
-      ...vehicleData,
-      id: Date.now(),
-      timestamp: new Date(vehicleData.timestamp),
+  // ✅ Mostrar cámara local solo en esta página
+  useEffect(() => {
+    const video = document.getElementById("localCamera");
+    if (!video) return;
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(() => {
+        console.log("🚫 No hay cámara disponible en este dispositivo.");
+      });
+  }, []);
+
+
+  // ✅ Manejo detección entrante
+  const handleDetection = (data) => {
+    const detection = {
+      ...data,
+      timestamp: new Date(),
+      id: Date.now()
     };
 
-    setCurrentDetection(newDetection);
-    setDetectionHistory(prev => [newDetection, ...prev.slice(0, 9)]);
+    setCurrentDetection(detection);
+    setDetectionHistory(prev => [detection, ...prev.slice(0, 50)]);
     setStats(prev => ({
       total: prev.total + 1,
-      permitidos: prev.permitidos + (newDetection.acceso ? 1 : 0),
-      denegados: prev.denegados + (newDetection.acceso ? 0 : 1),
+      permitidos: prev.permitidos + (detection.acceso ? 1 : 0),
+      denegados: prev.denegados + (!detection.acceso ? 1 : 0)
     }));
 
     setShowAlert(true);
     if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
-    alertTimeoutRef.current = setTimeout(() => setShowAlert(false), 8000);
-  };
-
-  const closeAlert = () => {
-    setShowAlert(false);
-    if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
+    alertTimeoutRef.current = setTimeout(() => setShowAlert(false), 6000);
   };
 
   return (
     <div className="space-y-8">
 
-      {/* Cámara local */}
-      <div className="bg-white/80 rounded-2xl shadow-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold">Cámara en vivo</h3>
-          <button
-            onClick={startCamera}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            {camReady ? "Reiniciar cámara" : "Activar cámara"}
-          </button>
-        </div>
+      {/* ✅ Esta cámara solo aparece aquí */}
+      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-4">
+        <h3 className="text-xl font-semibold mb-3">Cámara en Vivo</h3>
 
         <video
           id="localCamera"
           autoPlay
           playsInline
-          className="w-full h-auto rounded-xl border border-gray-200"
+          className="w-full h-auto rounded-xl border border-gray-300 shadow"
         />
-
-        {camMsg && <p className="mt-3 text-sm text-gray-600">{camMsg}</p>}
-
-        <ul className="mt-2 text-xs text-gray-500 list-disc pl-5">
-          <li>Si no aparece el prompt, tocá el candado 🔒 en la barra de direcciones y permití “Cámara”.</li>
-          <li>En Brave/Chrome, el botón “Activar cámara” evita bloqueos de autoplay.</li>
-          <li>Cerrá apps que usen la cámara (Zoom/Meet/OBS).</li>
-          <li>Abrí el sitio por <b>HTTPS</b> (Netlify ya lo hace).</li>
-        </ul>
       </div>
 
-      <div>
-        <h2 className="text-3xl font-bold mb-2">Detección Automática</h2>
-        <p className="text-gray-600 text-lg">Sistema de reconocimiento automático de patentes en tiempo real</p>
-      </div>
-
-      {/* Panel */}
-      <div className="bg-white/80 rounded-2xl shadow-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold">Control del Sistema</h3>
-          <button
-            onClick={connectWebSocket}
-            disabled={isDetecting}
-            className="bg-green-500 text-white font-semibold py-3 px-6 rounded-xl shadow transition disabled:opacity-50"
-          >
-            🔗 Reconectar
-          </button>
-        </div>
-
+      {/* Estado del sistema */}
+      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-6">
         <div className="flex items-center space-x-4">
-          <div className={`w-4 h-4 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+          <div className={`w-4 h-4 rounded-full ${isDetecting ? "bg-green-500 animate-pulse" : "bg-gray-400"}`}></div>
           <span className="text-lg font-medium">
-            {isDetecting ? '🔴 DETECTANDO EN VIVO' : '⚪ SISTEMA DETENIDO'}
+            {isDetecting ? "🔴 DETECTANDO EN VIVO" : "⚪ SIN SEÑAL DEL DETECTOR"}
           </span>
         </div>
       </div>
 
-      {/* Alerta */}
+      {/* ALERTA */}
       {showAlert && currentDetection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className={`max-w-2xl w-full mx-4 p-6 rounded-2xl border-4 shadow-2xl ${
-            currentDetection.acceso ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
-          }`}>
-            <div className="text-center mb-6">
-              <h3 className="text-3xl font-bold mb-2">🚨 DETECCIÓN AUTOMÁTICA</h3>
-              <p className="text-gray-600">Patente detectada automáticamente</p>
-            </div>
-
-            <div className="text-center mb-6">
-              <span className="text-6xl font-mono font-bold text-gray-900">
-                {currentDetection.matricula}
-              </span>
-            </div>
-
-            <div className="text-center mb-6">
-              <span className={`text-3xl font-bold px-6 py-3 rounded-full ${
-                currentDetection.acceso ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-              }`}>
-                {currentDetection.acceso ? '✅ Acceso concedido' : '❌ Acceso denegado'}
-              </span>
-            </div>
-
-            <div className="text-center">
-              <button
-                onClick={closeAlert}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
-              >
-                Cerrar
-              </button>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
+          <div className={`p-6 rounded-2xl shadow-2xl max-w-xl w-full text-center border-4 ${currentDetection.acceso ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400"}`}>
+            <h2 className="text-3xl font-bold mb-4">🚨 DETECCIÓN</h2>
+            <p className="text-6xl font-mono font-bold mb-4">{currentDetection.matricula}</p>
+            <div className={`text-2xl font-bold py-3 rounded-lg ${currentDetection.acceso ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+              {currentDetection.acceso ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO"}
             </div>
           </div>
         </div>
       )}
 
-      {/* Detección actual (placeholder) */}
-      {currentDetection && !showAlert && (
-        <div className="bg-white/80 rounded-2xl shadow-lg border border-gray-200 p-8">
-          {/* acá podés volver a poner tu bloque detallado si querés */}
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/80 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-blue-600 mb-2">{stats.total}</div>
-          <div className="text-gray-600">Total Detectadas</div>
-        </div>
-        <div className="bg-white/80 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-green-600 mb-2">{stats.permitidos}</div>
-          <div className="text-gray-600">Accesos Permitidos</div>
-        </div>
-        <div className="bg-white/80 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-red-600 mb-2">{stats.denegados}</div>
-          <div className="text-gray-600">Accesos Denegados</div>
-        </div>
-      </div>
-
       {/* Historial */}
-      <div className="bg-white/80 rounded-2xl shadow-lg border p-6">
-        <h3 className="text-xl font-semibold mb-6">Historial de Detecciones</h3>
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {detectionHistory.map((d) => (
-            <div key={d.id} className={`p-4 rounded-xl border-l-4 ${
-              d.acceso ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-400'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-mono font-bold">{d.matricula}</span>
-                <span className="text-sm text-gray-600">{d.timestamp.toLocaleTimeString()}</span>
-              </div>
+      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-6">
+        <h3 className="text-xl font-semibold mb-4">Historial</h3>
+        <div className="max-h-80 overflow-y-auto space-y-2">
+          {detectionHistory.map(d => (
+            <div key={d.id} className={`p-3 rounded-lg border-l-4 ${d.acceso ? "bg-green-50 border-green-500" : "bg-red-50 border-red-500"}`}>
+              <span className="font-mono text-2xl">{d.matricula}</span>
             </div>
           ))}
         </div>
