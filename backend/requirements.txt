@@ -14,10 +14,11 @@ python-multipart==0.0.6
 
 # Procesamiento de imágenes y visión por computadora
 opencv-python>=4.10.0
-ultralytics==8.0.196
+ultralytics>=8.3.0
 easyocr==1.7.0
 numpy>=1.26.0
 Pillow>=10.1.0
+torch>=2.0.0
 
 # Utilidades
 python-dotenv==1.0.0
