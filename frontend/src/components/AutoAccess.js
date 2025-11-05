@@ -1,50 +1,43 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-/**
- * AutoAccess
- * - La cámara en vivo se sirve desde el detector_sender.py en http://127.0.0.1:8090/video (HTTP).
- * - Si tu app está en HTTPS (Netlify), el navegador puede bloquear el embed (mixed content).
- *   En ese caso mostramos un botón para abrir la vista local en una pestaña aparte.
- * - Las detecciones llegan por WebSocket desde tu backend en Render y disparan alertas/historial.
- */
-
+const STREAM_URL = 'http://127.0.0.1:8090/video'; // servido por detector_sender.py
 const WS_URL = 'wss://smartgate-ey9z.onrender.com/auto-access/ws';
-const LOCAL_PREVIEW = 'http://127.0.0.1:8090/video';
 
 const AutoAccess = () => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [currentDetection, setCurrentDetection] = useState(null);
   const [detectionHistory, setDetectionHistory] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
-  const [camError, setCamError] = useState(false);
-  const [stats, setStats] = useState({ total: 0, permitidos: 0, denegados: 0 });
-
-  const wsRef = useRef(null);
+  const [inlineBlocked, setInlineBlocked] = useState(false); // mixed-content bloqueado
   const alertTimeoutRef = useRef(null);
+  const wsRef = useRef(null);
 
-  // Conectar WebSocket (Render)
+  // WebSocket para eventos de detección
   const connectWebSocket = useCallback(() => {
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
       setIsDetecting(true);
-      try { ws.send('ping'); } catch (_) {}
+      // opcional: pings suaves
+      try { ws.send('hello'); } catch {}
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(event.data);
-        if (msg?.type === 'detection') handleDetection(msg.data);
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'detection') {
+          handleDetection(msg.data);
+        }
       } catch {}
     };
 
     ws.onclose = () => {
       setIsDetecting(false);
-      setTimeout(connectWebSocket, 4000); // reconectar
+      setTimeout(connectWebSocket, 3000);
     };
 
     ws.onerror = () => {
-      // Silencioso, onclose reintenta
+      // silenciamos para reintentar
     };
 
     wsRef.current = ws;
@@ -52,120 +45,87 @@ const AutoAccess = () => {
 
   useEffect(() => {
     connectWebSocket();
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-      if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
-    };
+    return () => wsRef.current && wsRef.current.close();
   }, [connectWebSocket]);
 
-  // Manejar detección entrante
   const handleDetection = (data) => {
-    const detection = {
+    const d = {
       ...data,
       id: Date.now(),
       timestamp: new Date(),
     };
-
-    setCurrentDetection(detection);
-    setDetectionHistory(prev => [detection, ...prev.slice(0, 50)]);
-    setStats(prev => ({
-      total: prev.total + 1,
-      permitidos: prev.permitidos + (detection.acceso ? 1 : 0),
-      denegados: prev.denegados + (!detection.acceso ? 1 : 0),
-    }));
-
+    setCurrentDetection(d);
+    setDetectionHistory((prev) => [d, ...prev.slice(0, 50)]);
     setShowAlert(true);
     if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
     alertTimeoutRef.current = setTimeout(() => setShowAlert(false), 6000);
   };
 
-  const closeAlert = () => {
-    setShowAlert(false);
-    if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
+  // Handler para cuando el <img> del stream falla (p.ej. por HTTPS→HTTP bloqueado)
+  const onStreamError = () => {
+    setInlineBlocked(true);
   };
 
   return (
     <div className="space-y-8">
-      {/* Cámara en vivo (preview local) */}
-      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-semibold">Cámara en vivo</h3>
-          <span
-            className={`inline-flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full ${
-              isDetecting ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isDetecting ? 'bg-green-500' : 'bg-gray-400'
-              }`}
-            />
-            {isDetecting ? 'Detectando' : 'Sin señal del detector'}
-          </span>
-        </div>
+      {/* Cámara / Stream */}
+      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-5">
+        <h3 className="text-xl font-semibold mb-4">Cámara en vivo</h3>
 
-        <div
-          className="relative w-full overflow-hidden rounded-xl border border-gray-200"
-          style={{ aspectRatio: '16/9', background: '#000' }}
-        >
-          {!camError ? (
-            <img
-              src={LOCAL_PREVIEW}
-              alt="video"
-              className="absolute inset-0 w-full h-full object-contain"
-              onError={() => setCamError(true)}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-gray-700">
-              <div>
-                <p className="font-semibold mb-2">
-                  No se pudo mostrar la cámara aquí (contenido mixto HTTP/HTTPS).
-                </p>
-                <p className="text-sm mb-4">
-                  Asegurate de tener ejecutándose{' '}
-                  <code className="px-1 py-0.5 bg-gray-100 rounded">detector_sender.py</code> en esta PC.
-                  El preview está en{' '}
-                  <code className="px-1 py-0.5 bg-gray-100 rounded">
-                    {LOCAL_PREVIEW}
-                  </code>
-                  .
-                </p>
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => window.open(LOCAL_PREVIEW, '_blank')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg"
-                  >
-                    Abrir vista local
-                  </button>
-                  <button
-                    onClick={() => setCamError(false)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg"
-                  >
-                    Reintentar
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  Si otra app usa la webcam (Zoom/Meet/OBS), cerrala y reintentá.
-                </p>
+        {/* Si estás navegando la app por HTTP, el <img> carga normalmente.
+            Si estás en HTTPS, Chrome/Edge/Brave bloquean HTTP local → mostramos aviso y botón. */}
+        {window.location.protocol === 'https:' ? (
+          inlineBlocked ? (
+            <div className="p-6 rounded-xl border border-amber-300 bg-amber-50 text-amber-900">
+              <p className="mb-3 font-medium">
+                No se pudo incrustar el stream por <b>contenido mixto (HTTPS→HTTP)</b>.
+              </p>
+              <div className="space-x-2">
+                <a
+                  className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  href={STREAM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir vista local
+                </a>
+                <button
+                  className="inline-block px-4 py-2 rounded-lg border"
+                  onClick={() => setInlineBlocked(false)}
+                >
+                  Reintentar incrustar
+                </button>
               </div>
+              <ul className="mt-3 text-sm list-disc pl-5">
+                <li>
+                  Opcional: permití “Contenido inseguro” para este dominio (Candado → Configuración del sitio →
+                  Contenido inseguro → <b>Permitir</b>) y recargá.
+                </li>
+              </ul>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Encabezado */}
-      <div>
-        <h2 className="text-3xl font-bold mb-2">Detección Automática</h2>
-        <p className="text-gray-600 text-lg">
-          Sistema de reconocimiento automático de patentes en tiempo real
-        </p>
+          ) : (
+            <img
+              src={STREAM_URL}
+              alt="video"
+              onError={onStreamError}
+              className="w-full max-w-3xl mx-auto block rounded-xl border border-gray-300 shadow"
+            />
+          )
+        ) : (
+          <img
+            src={STREAM_URL}
+            alt="video"
+            onError={onStreamError}
+            className="w-full max-w-3xl mx-auto block rounded-xl border border-gray-300 shadow"
+          />
+        )}
       </div>
 
       {/* Estado del sistema */}
       <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-6">
-        <div className="flex items-center space-x-4">
-          <div
-            className={`w-4 h-4 rounded-full ${
+        <div className="flex items-center space-x-3">
+          <span
+            className={`inline-block w-3.5 h-3.5 rounded-full ${
               isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
             }`}
           />
@@ -173,6 +133,10 @@ const AutoAccess = () => {
             {isDetecting ? '🔴 DETECTANDO EN VIVO' : '⚪ SIN SEÑAL DEL DETECTOR'}
           </span>
         </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Requiere <code>detector_sender.py</code> corriendo en esta PC
+          (sirve el stream en <code>http://127.0.0.1:8090/video</code> y envía detecciones por WebSocket).
+        </p>
       </div>
 
       {/* Alerta de detección */}
@@ -192,35 +156,13 @@ const AutoAccess = () => {
             >
               {currentDetection.acceso ? '✅ ACCESO PERMITIDO' : '❌ ACCESO DENEGADO'}
             </div>
-            <button
-              onClick={closeAlert}
-              className="mt-5 bg-gray-700 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-lg"
-            >
-              Cerrar
-            </button>
           </div>
         </div>
       )}
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/90 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-blue-600 mb-2">{stats.total}</div>
-          <div className="text-gray-600">Total Detectadas</div>
-        </div>
-        <div className="bg-white/90 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-green-600 mb-2">{stats.permitidos}</div>
-          <div className="text-gray-600">Accesos Permitidos</div>
-        </div>
-        <div className="bg-white/90 rounded-2xl shadow-lg border p-6 text-center">
-          <div className="text-3xl font-bold text-red-600 mb-2">{stats.denegados}</div>
-          <div className="text-gray-600">Accesos Denegados</div>
-        </div>
-      </div>
-
       {/* Historial */}
-      <div className="bg-white/90 rounded-2xl shadow-lg border p-6">
-        <h3 className="text-xl font-semibold mb-4">Historial de Detecciones</h3>
+      <div className="bg-white/90 rounded-2xl shadow-lg border border-gray-200 p-6">
+        <h3 className="text-xl font-semibold mb-4">Historial</h3>
         <div className="max-h-80 overflow-y-auto space-y-2">
           {detectionHistory.map((d) => (
             <div
@@ -231,15 +173,10 @@ const AutoAccess = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-2xl">{d.matricula}</span>
-                <span className="text-sm text-gray-600">
-                  {d.timestamp.toLocaleTimeString()}
-                </span>
+                <span className="text-xs text-gray-500">{d.timestamp.toLocaleTimeString()}</span>
               </div>
             </div>
           ))}
-          {detectionHistory.length === 0 && (
-            <div className="text-gray-500 text-sm">Aún no hay detecciones.</div>
-          )}
         </div>
       </div>
     </div>
